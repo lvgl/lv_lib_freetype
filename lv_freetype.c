@@ -1,23 +1,93 @@
+/**
+ * @file lv_freetype.c
+ *
+ */
 
+/*********************
+ *      INCLUDES
+ *********************/
 #include "lv_freetype.h"
 
+/*********************
+ *      DEFINES
+ *********************/
+
+/**********************
+ *      TYPEDEFS
+ **********************/
+
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
 static const uint8_t * lv_font_get_bitmap_fmt_freetype(const lv_font_t * font, uint32_t unicode_letter);
 static bool lv_font_get_glyph_dsc_fmt_freetype(const lv_font_t * font, lv_font_glyph_dsc_t * dsc_out, uint32_t unicode_letter, uint32_t unicode_letter_next);
 
-static int render_init(const char * font_name, lv_font_fmt_freetype_dsc_t * dsc, uint16_t size);
-static int render_glyph(uint32_t glyph_code, lv_font_fmt_freetype_dsc_t * dsc);
+/**********************
+ *  STATIC VARIABLES
+ **********************/
+static FT_Library  library;
 
+/**********************
+ *      MACROS
+ **********************/
 
-void lv_freetype_font_init(lv_font_t * font, const char * font_path, uint16_t size)
+/**********************
+ *   GLOBAL FUNCTIONS
+ **********************/
+
+int lv_freetype_init(void)
 {
 
+    int error;
+
+    error = FT_Init_FreeType( &library );
+    if ( error )
+    {
+        printf("Error in FT_Init_FreeType: %d\n", error);
+        return error;
+    }
+
+    return FT_Err_Ok;
+}
+
+int lv_freetype_font_init(lv_font_t * font, const char * font_path, uint16_t size)
+{
     lv_font_fmt_freetype_dsc_t * dsc = lv_mem_alloc(sizeof(lv_font_fmt_freetype_dsc_t));
     LV_ASSERT_MEM(dsc);
-    if(dsc == NULL) return;
+    if(dsc == NULL) return FT_Err_Out_Of_Memory;
 
     int error;
-    error = render_init(font_path, dsc, size);
-    if(error) return;
+
+    error = FT_New_Face( library,
+            font_path,    /* first byte in memory */
+            0,         /* face_index           */
+            &dsc->face );
+    if ( error ) {
+        printf("Error in FT_New_Face: %d\n", error);
+        return error;
+    }
+
+    error = FT_Set_Char_Size(
+            dsc->face,    /* handle to face object           */
+            0,       /* char_width in 1/64th of points  */
+            size*64,   /* char_height in 1/64th of points */
+            300,     /* horizontal device resolution    */
+            300 );   /* vertical device resolution      */
+
+    if ( error ) {
+        printf("Error in FT_Set_Char_Size: %d\n", error);
+        return error;
+    }
+
+    error = FT_Set_Pixel_Sizes(
+            dsc->face,   /* handle to face object */
+            0,      /* pixel_width           */
+            size );   /* pixel_height          */
+
+    if ( error ) {
+        printf("Error in FT_Set_Char_Size: %d\n", error);
+        return error;
+    }
 
     font->get_glyph_dsc = lv_font_get_glyph_dsc_fmt_freetype;    /*Function pointer to get glyph's data*/
     font->get_glyph_bitmap = lv_font_get_bitmap_fmt_freetype;    /*Function pointer to get glyph's bitmap*/
@@ -25,7 +95,13 @@ void lv_freetype_font_init(lv_font_t * font, const char * font_path, uint16_t si
     font->base_line = -dsc->face->size->metrics.descender / 64;             /*Baseline measured from the bottom of the line*/
     font->dsc = dsc;           /*The custom font data. Will be accessed by `get_glyph_bitmap/dsc` */
     font->subpx = 0;
+
+    return FT_Err_Ok;
 }
+
+/**********************
+ *   STATIC FUNCTIONS
+ **********************/
 
 
 /**
@@ -38,13 +114,30 @@ static const uint8_t * lv_font_get_bitmap_fmt_freetype(const lv_font_t * font, u
 {
     lv_font_fmt_freetype_dsc_t * fdsc = (lv_font_fmt_freetype_dsc_t *) font->dsc;
 
-    render_glyph(unicode_letter, fdsc);
+    int error;
 
-    static uint8_t out_buf[100*100];
-    memcpy(out_buf, fdsc->face->glyph->bitmap.buffer, fdsc->face->glyph->bitmap.width * fdsc->face->glyph->bitmap.rows);
+    FT_UInt glyph_index = FT_Get_Char_Index(fdsc->face, unicode_letter );
+
+    error = FT_Load_Glyph(
+            fdsc->face,          /* handle to face object */
+            glyph_index,   /* glyph index           */
+            FT_LOAD_DEFAULT );  /* load flags, see below */
+
+    if ( error ) {
+        printf("Error in FT_Load_Glyph: %d\n", error);
+        return NULL;
+    }
+
+    error = FT_Render_Glyph(fdsc->face->glyph,   /* glyph slot  */
+            FT_RENDER_MODE_NORMAL ); /* render mode */
+
+    if ( error ) {
+        printf("Error in FT_Render_Glyph: %d\n", error);
+        return NULL;
+    }
 
     /*If not returned earlier then the letter is not found in this font*/
-    return out_buf;
+    return fdsc->face->glyph->bitmap.buffer;
 }
 
 /**
@@ -63,7 +156,20 @@ static bool lv_font_get_glyph_dsc_fmt_freetype(const lv_font_t * font, lv_font_g
     lv_font_fmt_freetype_dsc_t * fdsc = (lv_font_fmt_freetype_dsc_t *) font->dsc;
 
     int error = 0;
-    error = render_glyph(unicode_letter, fdsc);
+//    error = render_glyph(unicode_letter, fdsc);
+
+    FT_UInt glyph_index = FT_Get_Char_Index(fdsc->face, unicode_letter );
+
+    error = FT_Load_Glyph(
+            fdsc->face,          /* handle to face object */
+            glyph_index,   /* glyph index           */
+            FT_LOAD_DEFAULT );  /* load flags, see below */
+    if ( error )
+    {
+        printf("Error in FT_Load_Glyph: %d\n", error);
+        return error;
+    }
+
 
     if(error) return false;
 
@@ -75,93 +181,13 @@ static bool lv_font_get_glyph_dsc_fmt_freetype(const lv_font_t * font, lv_font_g
 
     int32_t adv_w = (fdsc->face->glyph->advance.x + akern.x + 32) / 64;
 
+
     dsc_out->adv_w = adv_w;
-    dsc_out->box_w = fdsc->face->glyph->bitmap.width;
-    dsc_out->box_h = fdsc->face->glyph->bitmap.rows;
-    dsc_out->ofs_x = fdsc->face->glyph->bitmap_left;
-    dsc_out->ofs_y = fdsc->face->glyph->bitmap_top - dsc_out->box_h;
+    dsc_out->box_w = fdsc->face->glyph->metrics.width / 64;
+    dsc_out->box_h = fdsc->face->glyph->metrics.height / 64;
+    dsc_out->ofs_x = fdsc->face->glyph->metrics.horiBearingX / 64;
+    dsc_out->ofs_y = fdsc->face->glyph->metrics.horiBearingY / 64 - dsc_out->box_h;
     dsc_out->bpp   = 8;
 
     return true;
 }
-
-
-
-static int render_init(const char * font_name, lv_font_fmt_freetype_dsc_t * dsc, uint16_t size)
-{
-    FT_Library  library;
-
-    int error; 
-
-    error = FT_Init_FreeType( &library );
-    if ( error )
-    {
-        printf("Error in FT_Init_FreeType: %d\n", error);
-        return -1;
-    }
-
-    error = FT_New_Face( library,
-            font_name,    /* first byte in memory */
-            0,         /* face_index           */
-            &dsc->face );
-    if ( error ) 
-    {
-        printf("Error in FT_New_Face: %d\n", error);
-        return error;
-    }
-
-    error = FT_Set_Char_Size(
-            dsc->face,    /* handle to face object           */
-            0,       /* char_width in 1/64th of points  */
-            size*64,   /* char_height in 1/64th of points */
-            300,     /* horizontal device resolution    */
-            300 );   /* vertical device resolution      */
-
-    if ( error )
-    {
-        printf("Error in FT_Set_Char_Size: %d\n", error);
-        return error;
-    }
-
-    error = FT_Set_Pixel_Sizes(
-            dsc->face,   /* handle to face object */
-            0,      /* pixel_width           */
-            size );   /* pixel_height          */
-
-    if ( error )
-    {
-        printf("Error in FT_Set_Char_Size: %d\n", error);
-        return error;
-    }
-
-    return error;
-}
-
-static int render_glyph(uint32_t glyph_code, lv_font_fmt_freetype_dsc_t * dsc)
-{
-    int error; 
-
-    FT_UInt glyph_index = FT_Get_Char_Index(dsc->face, glyph_code );
-
-    error = FT_Load_Glyph(
-            dsc->face,          /* handle to face object */
-            glyph_index,   /* glyph index           */
-            FT_LOAD_DEFAULT );  /* load flags, see below */
-    if ( error )
-    {
-        printf("Error in FT_Load_Glyph: %d\n", error);
-        return error;
-    }
-
-    error = FT_Render_Glyph(dsc->face->glyph,   /* glyph slot  */
-            FT_RENDER_MODE_NORMAL ); /* render mode */
-
-    if ( error )
-    {
-        printf("Error in FT_Render_Glyph: %d\n", error);
-        return error;
-    }
-
-    return error;
-}
-
