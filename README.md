@@ -12,6 +12,8 @@ Interface to FreeType to generate font bitmaps run time
 
 ## Usage in LittlevGL
 ```c
+    lv_freetype_init();
+
     static lv_font_t font1;
     lv_freetype_font_init(&font1, "./lv_freetype/arial.ttf", 32);
 
