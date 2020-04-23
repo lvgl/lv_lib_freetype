@@ -17,7 +17,12 @@ Interface to FreeType to generate font bitmaps run time
     static lv_font_t font1;
     lv_freetype_font_init(&font1, "./lv_freetype/arial.ttf", 32);
 
+    static lv_style_t style;
+    lv_style_init(&style, &lv_style_plain);
+    style.text.font = &font1;
+
     lv_obj_t * label = lv_label_create(lv_scr_act(), NULL);
+    lv_label_set_style(label, LV_LABEL_STYLE_MAIN, &style);
     lv_label_set_text(label, "Hello world");
 ```
 
