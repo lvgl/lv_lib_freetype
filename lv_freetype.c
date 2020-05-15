@@ -1,20 +1,46 @@
-#include "lvgl/lvgl.h"
-#include "ft2build.h"
-#include FT_FREETYPE_H
-#include FT_GLYPH_H
-#include FT_CACHE_H
+/**
+ * @file lv_freetype.c
+ *
+ */
+
+/*********************
+ *      INCLUDES
+ *********************/
 
 #include "lv_freetype.h"
 
+/*********************
+ *      DEFINES
+ *********************/
+
+/**********************
+ *      TYPEDEFS
+ **********************/
+
+/**********************
+ *  STATIC PROTOTYPES
+ **********************/
+ 
+ /**********************
+ *  STATIC VARIABLES
+ **********************/
 static FT_Library library;
 
 #if USE_CACHE_MANGER
 static FTC_Manager cache_manager;
 static FTC_CMapCache cmap_cache;
-//static FTC_ImageCache image_cache;
+/*static FTC_ImageCache image_cache;*/
 static FTC_SBitCache sbit_cache;
 static FTC_SBit sbit;
 
+/**********************
+ *      MACROS
+ **********************/
+
+/**********************
+ *   STATIC FUNCTIONS
+ **********************/
+ 
 static FT_Error  font_Face_Requester(FTC_FaceID  face_id,
                          FT_Library  library,
                          FT_Pointer  req_data,
@@ -28,7 +54,7 @@ static bool get_glyph_dsc_cache_cb(const lv_font_t * font, lv_font_glyph_dsc_t *
 {
 	FT_UInt glyph_index;
 	FT_UInt charmap_index;
-	FT_Face face;//,get_face
+	FT_Face face;
 	lv_font_fmt_freetype_dsc_t * dsc = (lv_font_fmt_freetype_dsc_t *)(font->user_data);
     face = dsc->face;
 	FTC_ImageTypeRec desc_sbit_type;
@@ -38,7 +64,7 @@ static bool get_glyph_dsc_cache_cb(const lv_font_t * font, lv_font_glyph_dsc_t *
 	desc_sbit_type.height = dsc->font_size;
 	desc_sbit_type.width = 0;
 
-	//FTC_Manager_LookupFace(cache_manager, face, &get_face);
+	/*FTC_Manager_LookupFace(cache_manager, face, &get_face);*/
 	charmap_index = FT_Get_Charmap_Index(face->charmap);
 	glyph_index = FTC_CMapCache_Lookup(cmap_cache, face, charmap_index, unicode_letter);
 	FTC_SBitCache_Lookup(sbit_cache, &desc_sbit_type, glyph_index, &sbit, NULL);
@@ -106,7 +132,19 @@ static const uint8_t * get_glyph_bitmap_cb(const lv_font_t * font, uint32_t unic
 	return (const uint8_t *)(face->glyph->bitmap.buffer);
 }
 #endif
-int lv_freetype_init(uint8_t max_font_manger)
+
+
+/**********************
+ *   GLOBAL FUNCTIONS
+ **********************/
+ 
+/**
+* init freetype library
+* @param max_faces Maximum number of opened @FT_Face objects managed by this cache
+* @return FT_Error
+* example: if you have two faces,max_faces should >= 2
+*/
+int lv_freetype_init(uint8_t max_faces)
 {
     FT_Error error;
     error = FT_Init_FreeType(&library);
@@ -117,7 +155,7 @@ int lv_freetype_init(uint8_t max_font_manger)
 	}
 #if USE_CACHE_MANGER
     //cache
-    error = FTC_Manager_New(library, max_font_manger, 1, 0, font_Face_Requester, NULL, &cache_manager);
+    error = FTC_Manager_New(library, max_faces, 1, 0, font_Face_Requester, NULL, &cache_manager);
 	if(error)
 	{
 		printf("Failed to open cache manager\r\n");
@@ -130,14 +168,14 @@ int lv_freetype_init(uint8_t max_font_manger)
 		printf("Failed to open Cmap Cache\r\n");
 		return error;
 	}
-
-//	error = FTC_ImageCache_New(cache_manager, &image_cache);
-//	if(error)
-//	{
-//		printf("Failed to open image cache\r\n");
-//		return error;
-//	}
-
+	/*
+	error = FTC_ImageCache_New(cache_manager, &image_cache);
+	if(error)
+	{
+		printf("Failed to open image cache\r\n");
+		return error;
+	}
+	*/
 	error = FTC_SBitCache_New(cache_manager, &sbit_cache);
 	if(error)
 	{
@@ -148,6 +186,13 @@ int lv_freetype_init(uint8_t max_font_manger)
     return FT_Err_Ok;
 }
 
+/**
+* init lv_font_t struct
+* @param font pointer to a font
+* @param font_path the font path
+* @param font_size the height of font
+* @return FT_Error
+*/
 int lv_freetype_font_init(lv_font_t * font, const char * font_path, uint16_t font_size)
 {
     FT_Error error;
@@ -177,6 +222,9 @@ int lv_freetype_font_init(lv_font_t * font, const char * font_path, uint16_t fon
 	font->get_glyph_bitmap = get_glyph_bitmap_cb;  /*Set a callback to get bitmap of a glyp*/
 #endif
 
+#ifndef LV_USE_USER_DATA
+#error "lv_freetype : user_data is required.Enable it lv_conf.h(LV_USE_USER_DATA 1)"
+#endif
     font->user_data = dsc;
 	font->line_height = (dsc->face->size->metrics.height >> 6);
     font->base_line = -(dsc->face->size->metrics.descender >> 6);  /*Base line measured from the top of line_height*/
