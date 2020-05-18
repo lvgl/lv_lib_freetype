@@ -12,18 +12,22 @@ Interface to FreeType to generate font bitmaps run time
 
 ## Usage in LittlevGL
 ```c
-    lv_freetype_init();
+lv_freetype_init(64); /*Cache max 64 glyphs*/
 
-    static lv_font_t font1;
-    lv_freetype_font_init(&font1, "./lv_freetype/arial.ttf", 32);
+/*Create a font*/
+static lv_font_t font1;
+lv_freetype_font_init(&font1, "./lv_lib_freetype/arial.ttf", 32);
 
-    static lv_style_t style;
-    lv_style_init(&style, &lv_style_plain);
-    style.text.font = &font1;
+/*Create style with the new font*/
+static lv_style_t style;
+lv_style_init(&style);
+lv_style_set_text_font(&style, LV_STATE_DEFAULT, &font1);
 
-    lv_obj_t * label = lv_label_create(lv_scr_act(), NULL);
-    lv_label_set_style(label, LV_LABEL_STYLE_MAIN, &style);
-    lv_label_set_text(label, "Hello world");
+/*Create a label with the new style*/
+lv_obj_t * label = lv_label_create(lv_scr_act(), NULL);
+lv_obj_add_style(label, LV_LABEL_PART_MAIN, &style);
+lv_label_set_text(label, "Hello world");
+
 ```
 
 ## Learn more

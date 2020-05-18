@@ -8,6 +8,7 @@
  *********************/
 
 #include "lv_freetype.h"
+#include "lvgl/src/lv_core/lv_debug.h"
 
 /*********************
  *      DEFINES
