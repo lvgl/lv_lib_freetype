@@ -1,4 +1,4 @@
-# lv_freetype
+# FreeType interation for LVGL
 Interface to FreeType to generate font bitmaps run time
 
 ## Install FreeType
@@ -10,7 +10,7 @@ Interface to FreeType to generate font bitmaps run time
 - Add include path: `/usr/include/freetype2` (for GCC: `-I/usr/include/freetype2 -L/usr/local/lib`)
 - Add library: `freetype` (for GCC: `-L/usr/local/lib -lfreetype`)
 
-## Usage in LittlevGL
+## Usage in LVGL
 ```c
 lv_freetype_init(64); /*Cache max 64 glyphs*/
 
@@ -32,4 +32,4 @@ lv_label_set_text(label, "Hello world");
 
 ## Learn more
 - FreeType [tutorial](https://www.freetype.org/freetype2/docs/tutorial/step1.html) 
-- LittlevGL's [font interface](https://docs.littlevgl.com/en/html/overview/font.html#add-a-new-font-engine)
+- LVGL's [font interface](https://docs.lvgl.io/v7/en/html/overview/font.html#add-a-new-font-engine)
