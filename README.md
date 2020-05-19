@@ -1,4 +1,4 @@
-# FreeType interation for LVGL
+# FreeType integration with LVGL
 Interface to FreeType to generate font bitmaps run time
 
 ## Install FreeType
