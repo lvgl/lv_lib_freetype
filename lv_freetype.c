@@ -8,7 +8,7 @@
  *********************/
 
 #include "lv_freetype.h"
-#include "lvgl/src/lv_core/lv_debug.h"
+#include "lvgl/src/lv_misc/lv_debug.h"
 
 /*********************
  *      DEFINES
@@ -53,6 +53,16 @@ static FT_Error  font_Face_Requester(FTC_FaceID  face_id,
 }
 static bool get_glyph_dsc_cache_cb(const lv_font_t * font, lv_font_glyph_dsc_t * dsc_out, uint32_t unicode_letter, uint32_t unicode_letter_next)
 {
+    if(unicode_letter < 0x20) {
+        dsc_out->adv_w = 0;
+        dsc_out->box_h = 0;
+        dsc_out->box_w = 0;
+        dsc_out->ofs_x = 0;
+        dsc_out->ofs_y = 0;
+        dsc_out->bpp = 0;
+        return true;
+    }
+
 	FT_UInt glyph_index;
 	FT_UInt charmap_index;
 	FT_Face face;
