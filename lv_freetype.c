@@ -98,6 +98,16 @@ static const uint8_t * get_glyph_bitmap_cache_cb(const lv_font_t * font, uint32_
 #else
 static bool get_glyph_dsc_cb(const lv_font_t * font, lv_font_glyph_dsc_t * dsc_out, uint32_t unicode_letter, uint32_t unicode_letter_next)
 {
+    if(unicode_letter < 0x20) {
+        dsc_out->adv_w = 0;
+        dsc_out->box_h = 0;
+        dsc_out->box_w = 0;
+        dsc_out->ofs_x = 0;
+        dsc_out->ofs_y = 0;
+        dsc_out->bpp = 0;
+        return true;
+    }
+
     int error;
     FT_Face face;
     lv_font_fmt_freetype_dsc_t * dsc = (lv_font_fmt_freetype_dsc_t *)(font->user_data);
