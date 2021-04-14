@@ -8,7 +8,6 @@
  *********************/
 
 #include "lv_freetype.h"
-#include "lvgl/src/lv_misc/lv_debug.h"
 
 /*********************
  *      DEFINES
@@ -103,25 +102,36 @@ Fail:
 
 bool lv_ft_font_init(lv_ft_info_t *info)
 {
+    lv_font_fmt_ft_dsc_t * dsc = lv_mem_alloc(sizeof(lv_font_fmt_ft_dsc_t));
+    if(dsc == NULL) return false;
+
+    dsc->font = lv_mem_alloc(sizeof(lv_font_t));
+    if(dsc->font == NULL) {
+        lv_mem_free(dsc);
+        return false;
+    }
+
     lv_face_info_t *face_info = NULL;
     FT_Face face = face_find_in_list(info);
     if (face == NULL) {
         if (face_control.cnt == face_control.num - 1) {
             LV_LOG_WARN("face full");
-            return false;
+            goto Fail;
+        }
+        face_info = lv_mem_alloc(sizeof(lv_face_info_t) + strlen(info->name) + 1);
+        if(face_info == NULL) {
+            goto Fail;
         }
         FT_Error error = FT_New_Face(library, info->name, 0, &face);
         if(error){
+            lv_mem_free(face_info);
             LV_LOG_WARN("create face error(%d)", error);
-            return false;
+            goto Fail;
         }
-        face_info = lv_mem_alloc(sizeof(lv_face_info_t));
-        LV_ASSERT_MEM(face_info);
-        char *face_name = lv_mem_alloc(strlen(info->name) + 1);
-        LV_ASSERT_MEM(face_name);
-        strcpy(face_name, info->name);
+
+        face_info->name = ((char *)face_info) + sizeof(lv_face_info_t);
+        strcpy(face_info->name, info->name);
         face_info->cnt = 1;
-        face_info->name = face_name;
         face->generic.data = face_info;
         face->generic.finalizer = face_generic_finalizer;
         face_add_to_list(face);
@@ -131,7 +141,7 @@ bool lv_ft_font_init(lv_ft_info_t *info)
         FT_Size size;
         FT_Error error = FT_New_Size(face, &size);
         if (error) {
-            return false;
+            goto Fail;
         }
         FT_Activate_Size(size);
         FT_Reference_Face(face);
@@ -141,11 +151,6 @@ bool lv_ft_font_init(lv_ft_info_t *info)
 #endif
     }
     FT_Set_Pixel_Sizes(face, 0, info->weight);
-
-    lv_font_fmt_ft_dsc_t * dsc = lv_mem_alloc(sizeof(lv_font_fmt_ft_dsc_t));
-    LV_ASSERT_MEM(dsc);
-    dsc->font = lv_mem_alloc(sizeof(lv_font_t));
-    LV_ASSERT_MEM(dsc->font);
 
     dsc->face = face;
     dsc->size = face->size;
@@ -163,6 +168,11 @@ bool lv_ft_font_init(lv_ft_info_t *info)
     font->dsc = NULL;
     info->font = font;
     return true;
+
+Fail:
+    lv_mem_free(dsc->font);
+    lv_mem_free(dsc);
+    return false;
 }
 
 void lv_ft_font_destroy(lv_font_t* font)
@@ -197,7 +207,6 @@ static void face_generic_finalizer(void* object)
     face_remove_from_list(face);
     if(face->generic.data){
         lv_face_info_t *face_info = (lv_face_info_t *)face->generic.data;
-        lv_mem_free(face_info->name);
         lv_mem_free(face_info);
     }
     LV_LOG_INFO("face finalizer(%p)\n", face);
@@ -205,13 +214,14 @@ static void face_generic_finalizer(void* object)
 
 static FT_Face face_find_in_list(lv_ft_info_t *info)
 {
-    FT_Face *pface;
     lv_face_info_t *face_info;
-    _LV_LL_READ(face_control.face_ll, pface) {
+    FT_Face *pface = _lv_ll_get_head(&face_control.face_ll);
+    while(pface) {
         face_info = (lv_face_info_t *)(*pface)->generic.data;
         if (strcmp(face_info->name, info->name) == 0) {
             return *pface;
         }
+        pface = _lv_ll_get_next(&face_control.face_ll, pface);
     }
 
     return NULL;
@@ -227,13 +237,15 @@ static void face_add_to_list(FT_Face face)
 
 static void face_remove_from_list(FT_Face face)
 {
-    FT_Face *pface;
-    _LV_LL_READ(face_control.face_ll, pface) {
+    FT_Face *pface = _lv_ll_get_head(&face_control.face_ll);
+    while(pface) {
         if (*pface == face) {
             _lv_ll_remove(&face_control.face_ll, pface);
             lv_mem_free(pface);
             face_control.cnt--;
+            break;
         }
+        pface = _lv_ll_get_next(&face_control.face_ll, pface);
     }
 }
 

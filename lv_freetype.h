@@ -57,7 +57,7 @@ typedef struct {
     lv_font_t*  font;
     uint16_t    style;
     uint16_t weight;
-}lv_font_fmt_freetype_dsc_t;
+} lv_font_fmt_freetype_dsc_t;
 
 typedef lv_font_fmt_freetype_dsc_t lv_font_fmt_ft_dsc_t;
 
@@ -69,7 +69,7 @@ typedef lv_font_fmt_freetype_dsc_t lv_font_fmt_ft_dsc_t;
  * init freetype library
  * @param max_faces Maximum number of opened FT_Face objects managed by this cache instance. Use 0 for defaults.
  * @param max_sizes Maximum number of opened FT_Size objects managed by this cache instance. Use 0 for defaults.
- * @param max_bytes Maximum number of bytes to use for cached data nodes. Use 0 for defaults. 
+ * @param max_bytes Maximum number of bytes to use for cached data nodes. Use 0 for defaults.
  *                  Note that this value does not account for managed FT_Face and FT_Size objects.
  * @return true on success, otherwise false.
  */
@@ -92,7 +92,7 @@ void lv_ft_font_destroy(lv_font_t* font);
 /**********************
  *      MACROS
  **********************/
- 
+
 #ifdef __cplusplus
 } /* extern "C" */
 #endif
