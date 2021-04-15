@@ -100,6 +100,14 @@ Fail:
 #endif/* LV_USE_FT_CACHE_MANAGER */
 }
 
+void lv_freetype_destroy(void)
+{
+#if LV_USE_FT_CACHE_MANAGER
+    FTC_Manager_Done(cache_manager);
+#endif
+    FT_Done_FreeType(library);
+}
+
 bool lv_ft_font_init(lv_ft_info_t *info)
 {
     lv_font_fmt_ft_dsc_t * dsc = lv_mem_alloc(sizeof(lv_font_fmt_ft_dsc_t));

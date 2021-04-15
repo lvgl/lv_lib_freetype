@@ -76,6 +76,11 @@ typedef lv_font_fmt_freetype_dsc_t lv_font_fmt_ft_dsc_t;
 bool lv_freetype_init(FT_UInt max_faces, FT_UInt max_sizes, FT_ULong max_bytes);
 
 /**
+ * Destroy freetype library
+ */
+void lv_freetype_destroy(void);
+
+/**
  * Creates a font with info parameter specified.
  * @param info See lv_ft_info_t for details.
  *             when success, lv_ft_info_t->font point to the font you created.
