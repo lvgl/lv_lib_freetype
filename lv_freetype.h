@@ -51,16 +51,6 @@ typedef struct {
     uint16_t style;     /* font style */
 } lv_ft_info_t;
 
-typedef struct {
-    FT_Face     face;
-    FT_Size     size;
-    lv_font_t*  font;
-    uint16_t    style;
-    uint16_t weight;
-} lv_font_fmt_freetype_dsc_t;
-
-typedef lv_font_fmt_freetype_dsc_t lv_font_fmt_ft_dsc_t;
-
 /**********************
  * GLOBAL PROTOTYPES
  **********************/

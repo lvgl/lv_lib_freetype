@@ -6,7 +6,6 @@
 /*********************
  *      INCLUDES
  *********************/
-
 #include "lv_freetype.h"
 
 /*********************
@@ -16,6 +15,13 @@
 /**********************
  *      TYPEDEFS
  **********************/
+typedef struct {
+    FT_Face     face;
+    FT_Size     size;
+    lv_font_t*  font;
+    uint16_t    style;
+    uint16_t weight;
+} lv_font_fmt_ft_dsc_t;
 
 /**********************
  *  STATIC PROTOTYPES
@@ -265,7 +271,7 @@ static FT_Error font_face_requester(FTC_FaceID face_id,
     LV_UNUSED(library_is);
     LV_UNUSED(req_data);
     *aface = face_id;
-    return FT_Err_Ok;
+    return 0;
 }
 
 static bool get_glyph_dsc_cb_cache(const lv_font_t * font, 
