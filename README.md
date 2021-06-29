@@ -15,28 +15,27 @@ Interface to FreeType to generate font bitmaps run time
 To enable cache, set`LV_USE_FT_CACHE_MANAGER  1`in lv_freetype.h.
 
 ```c
-/* init freetype library */
-lv_freetype_init(64, 1, 0);
+  /*Init freetype library
+   *Cache max 64 faces and 1 size*/
+  lv_freetype_init(64, 1, 0);
 
-/*Create a font*/
-lv_ft_info_t info;
-info.name = "./lv_lib_freetype/arial.ttf"";
-info.size = 16;
-info.style = FT_FONT_STYLE_NORMAL;
-lv_ft_font_init(&info);
+  /*Create a font*/
+  static lv_ft_info_t info;
+  info.name = "./lv_lib_freetype/arial.ttf";
+  info.weight = 16;
+  info.style = FT_FONT_STYLE_NORMAL;
+  lv_ft_font_init(&info);
 
-/*Create style with the new font*/
-static lv_style_t style;
-lv_style_init(&style);
-lv_style_set_text_font(&style, LV_STATE_DEFAULT, info.font);
+  /*Create style with the new font*/
+  static lv_style_t style;
+  lv_style_init(&style);
+  lv_style_set_text_font(&style, info.font);
 
-/*Create a label with the new style*/
-lv_obj_t * label = lv_label_create(lv_scr_act(), NULL);
-lv_obj_add_style(label, LV_LABEL_PART_MAIN, &style);
-lv_label_set_text(label, "Hello world");
+  /*Create a label with the new style*/
+  lv_obj_t * label = lv_label_create(lv_scr_act());
+  lv_obj_add_style(label, &style, 0);
+  lv_label_set_text(label, "Hello world");
 
-/* free font */
-//lv_ft_font_destroy(info.font);
 ```
 
 ## Learn more
