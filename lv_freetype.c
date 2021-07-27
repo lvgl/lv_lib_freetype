@@ -66,8 +66,15 @@ static FT_Library library;
 #if LV_USE_FT_CACHE_MANAGER
     static FTC_Manager cache_manager;
     static FTC_CMapCache cmap_cache;
+
+#if LV_USE_FT_SBIT_CACHE
     static FTC_SBitCache sbit_cache;
     static FTC_SBit sbit;
+#else
+    static FTC_ImageCache image_cache;
+    static FT_Glyph       image_glyph;
+#endif
+
 #else
     static lv_faces_control_t face_control;
 #endif
@@ -102,11 +109,19 @@ bool lv_freetype_init(uint16_t max_faces, uint16_t max_sizes, uint32_t max_bytes
         goto Fail;
     }
 
+#if LV_USE_FT_SBIT_CACHE
     error = FTC_SBitCache_New(cache_manager, &sbit_cache);
     if(error) {
         LV_LOG_ERROR("Failed to open sbit cache");
         goto Fail;
     }
+#else
+    error = FTC_ImageCache_New(cache_manager, &image_cache);
+    if(error) {
+        LV_LOG_ERROR("Failed to open image cache");
+        goto Fail;
+    }
+#endif
 
     return true;
 Fail:
@@ -185,19 +200,22 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
     lv_font_fmt_ft_dsc_t * dsc = (lv_font_fmt_ft_dsc_t *)(font->dsc);
 
     FT_Face face;
-    FTC_ImageTypeRec desc_sbit_type;
     FTC_FaceID face_id = (FTC_FaceID)dsc->face_id;
     FTC_Manager_LookupFace(cache_manager, face_id, &face);
-
-    desc_sbit_type.face_id = face_id;
-    desc_sbit_type.flags = FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL;
-    desc_sbit_type.height = dsc->height;
-    desc_sbit_type.width = dsc->height;
     FT_UInt charmap_index = FT_Get_Charmap_Index(face->charmap);
     FT_UInt glyph_index = FTC_CMapCache_Lookup(cmap_cache, face_id, charmap_index, unicode_letter);
-    FT_Error error = FTC_SBitCache_Lookup(sbit_cache, &desc_sbit_type, glyph_index, &sbit, NULL);
+
+    FTC_ImageTypeRec desc_type;
+    desc_type.face_id = face_id;
+    desc_type.flags = FT_LOAD_RENDER | FT_LOAD_TARGET_NORMAL;
+    desc_type.height = dsc->height;
+    desc_type.width = dsc->height;
+
+#if LV_USE_FT_SBIT_CACHE
+    FT_Error error = FTC_SBitCache_Lookup(sbit_cache, &desc_type, glyph_index, &sbit, NULL);
     if(error) {
         LV_LOG_ERROR("SBitCache_Lookup error");
+        return false;
     }
 
     dsc_out->adv_w = sbit->xadvance;
@@ -206,6 +224,26 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
     dsc_out->ofs_x = sbit->left;    /*X offset of the bitmap in [pf]*/
     dsc_out->ofs_y = sbit->top - sbit->height; /*Y offset of the bitmap measured from the as line*/
     dsc_out->bpp = 8;               /*Bit per pixel: 1/2/4/8*/
+#else
+    FT_Error error = FTC_ImageCache_Lookup(image_cache, &desc_type, glyph_index, &image_glyph, NULL);
+    if(error) {
+        LV_LOG_ERROR("ImageCache_Lookup error");
+        return false;
+    }
+    if (image_glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+        LV_LOG_ERROR("Glyph_To_Bitmap error");
+        return false;
+    }
+
+    FT_BitmapGlyph glyph_bitmap = (FT_BitmapGlyph)image_glyph;
+    dsc_out->adv_w = (glyph_bitmap->root.advance.x >> 16);
+    dsc_out->box_h = glyph_bitmap->bitmap.rows;         /*Height of the bitmap in [px]*/
+    dsc_out->box_w = glyph_bitmap->bitmap.width;        /*Width of the bitmap in [px]*/
+    dsc_out->ofs_x = glyph_bitmap->left;                /*X offset of the bitmap in [pf]*/
+    dsc_out->ofs_y = glyph_bitmap->top -
+                     glyph_bitmap->bitmap.rows;         /*Y offset of the bitmap measured from the as line*/
+    dsc_out->bpp = 8;         /*Bit per pixel: 1/2/4/8*/
+#endif
 
     return true;
 }
@@ -214,7 +252,12 @@ static const uint8_t * get_glyph_bitmap_cb_cache(const lv_font_t * font, uint32_
 {
     LV_UNUSED(font);
     LV_UNUSED(unicode_letter);
+#if LV_USE_FT_SBIT_CACHE
     return (const uint8_t *)sbit->buffer;
+#else
+    FT_BitmapGlyph glyph_bitmap = (FT_BitmapGlyph)image_glyph;
+    return (const uint8_t *)glyph_bitmap->bitmap.buffer;
+#endif
 }
 
 static bool lv_ft_font_init_cache(lv_ft_info_t * info)

@@ -17,7 +17,14 @@ extern "C" {
 /*********************
  *      DEFINES
  *********************/
-#define LV_USE_FT_CACHE_MANAGER  1
+/* 1:use freetype cache manager, 0:close. */
+#define LV_USE_FT_CACHE_MANAGER     1
+#if LV_USE_FT_CACHE_MANAGER == 1
+/* 1: bitmap cache use the sbit cache, 0:bitmap cache use the image cache. */
+/* sbit cache:it is much more memory efficient for small bitmaps(font size < 256) */
+/* if font size >= 256, must be configured as image cache */
+#  define LV_USE_FT_SBIT_CACHE      1
+#endif
 
 /**********************
  *      TYPEDEFS
