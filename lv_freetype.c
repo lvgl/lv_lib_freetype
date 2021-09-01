@@ -329,6 +329,7 @@ void lv_ft_font_destroy_cache(lv_font_t * font)
 
     lv_font_fmt_ft_dsc_t * dsc = (lv_font_fmt_ft_dsc_t *)(font->dsc);
     if(dsc) {
+        FTC_Manager_RemoveFaceID(cache_manager, (FTC_FaceID)dsc->face_id);
         lv_mem_free(dsc->face_id);
         lv_mem_free(dsc->font);
         lv_mem_free(dsc);
