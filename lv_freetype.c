@@ -304,8 +304,11 @@ static bool lv_ft_font_init_cache(lv_ft_info_t * info)
     font->subpx = LV_FONT_SUBPX_NONE;
     font->line_height = (face_size->face->size->metrics.height >> 6);
     font->base_line = -(face_size->face->size->metrics.descender >> 6);
-    font->underline_position = face_size->face->underline_position;
-    font->underline_thickness = face_size->face->underline_thickness;
+
+    FT_Fixed scale = face_size->face->size->metrics.y_scale;
+    int8_t thickness = FT_MulFix(scale, face_size->face->underline_thickness) >> 6;
+    font->underline_position = FT_MulFix(scale, face_size->face->underline_position) >> 6;
+    font->underline_thickness = thickness < 1 ? 1 : thickness;
 
     /* return to user */
     info->font = font;
@@ -326,6 +329,7 @@ void lv_ft_font_destroy_cache(lv_font_t * font)
 
     lv_font_fmt_ft_dsc_t * dsc = (lv_font_fmt_ft_dsc_t *)(font->dsc);
     if(dsc) {
+        FTC_Manager_RemoveFaceID(cache_manager, (FTC_FaceID)dsc->face_id);
         lv_mem_free(dsc->face_id);
         lv_mem_free(dsc->font);
         lv_mem_free(dsc);
@@ -486,8 +490,11 @@ static bool lv_ft_font_init_nocache(lv_ft_info_t * info)
     font->get_glyph_bitmap = get_glyph_bitmap_cb_nocache;
     font->line_height = (face->size->metrics.height >> 6);
     font->base_line = -(face->size->metrics.descender >> 6);
-    font->underline_position = face->underline_position;
-    font->underline_thickness = face->underline_thickness;
+
+    FT_Fixed scale = face->size->metrics.y_scale;
+    int8_t thickness = FT_MulFix(scale, face->underline_thickness) >> 6;
+    font->underline_position = FT_MulFix(scale, face->underline_position) >> 6;
+    font->underline_thickness = thickness < 1 ? 1 : thickness;
     font->subpx = LV_FONT_SUBPX_NONE;
 
     info->font = font;
