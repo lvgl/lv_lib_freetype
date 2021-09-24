@@ -12,6 +12,8 @@
 #include FT_GLYPH_H
 #include FT_CACHE_H
 #include FT_SIZES_H
+#include FT_IMAGE_H
+#include FT_OUTLINE_H
 
 /*********************
  *      DEFINES
@@ -66,14 +68,15 @@ static FT_Library library;
 #if LV_USE_FT_CACHE_MANAGER
     static FTC_Manager cache_manager;
     static FTC_CMapCache cmap_cache;
+    static FT_Face current_face = NULL;
 
-#if LV_USE_FT_SBIT_CACHE
-    static FTC_SBitCache sbit_cache;
-    static FTC_SBit sbit;
-#else
-    static FTC_ImageCache image_cache;
-    static FT_Glyph       image_glyph;
-#endif
+    #if LV_USE_FT_SBIT_CACHE
+        static FTC_SBitCache sbit_cache;
+        static FTC_SBit sbit;
+    #else
+        static FTC_ImageCache image_cache;
+        static FT_Glyph       image_glyph;
+    #endif
 
 #else
     static lv_faces_control_t face_control;
@@ -183,6 +186,36 @@ static FT_Error font_face_requester(FTC_FaceID face_id,
     return FT_Err_Ok;
 }
 
+static bool get_blod_glyph(const lv_font_t * font, FT_Face face,
+                           FT_UInt glyph_index, lv_font_glyph_dsc_t * dsc_out)
+{
+    if(FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT)) {
+        return false;
+    }
+
+    lv_font_fmt_ft_dsc_t * dsc = (lv_font_fmt_ft_dsc_t *)(font->dsc);
+    if(face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+        if(dsc->style & FT_FONT_STYLE_BOLD) {
+            int strength = 1 << 6;
+            FT_Outline_Embolden(&face->glyph->outline, strength);
+        }
+    }
+
+    if(FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL)) {
+        return false;
+    }
+
+    dsc_out->adv_w = (face->glyph->metrics.horiAdvance >> 6);
+    dsc_out->box_h = face->glyph->bitmap.rows;         /*Height of the bitmap in [px]*/
+    dsc_out->box_w = face->glyph->bitmap.width;         /*Width of the bitmap in [px]*/
+    dsc_out->ofs_x = face->glyph->bitmap_left;         /*X offset of the bitmap in [pf]*/
+    dsc_out->ofs_y = face->glyph->bitmap_top -
+                     face->glyph->bitmap.rows;         /*Y offset of the bitmap measured from the as line*/
+    dsc_out->bpp = 8;         /*Bit per pixel: 1/2/4/8*/
+
+    return true;
+}
+
 static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
                                    lv_font_glyph_dsc_t * dsc_out, uint32_t unicode_letter, uint32_t unicode_letter_next)
 {
@@ -204,6 +237,11 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
     FTC_Manager_LookupFace(cache_manager, face_id, &face);
     FT_UInt charmap_index = FT_Get_Charmap_Index(face->charmap);
     FT_UInt glyph_index = FTC_CMapCache_Lookup(cmap_cache, face_id, charmap_index, unicode_letter);
+
+    if(dsc->style & FT_FONT_STYLE_BOLD) {
+        current_face = face;
+        return get_blod_glyph(font, face, glyph_index, dsc_out);
+    }
 
     FTC_ImageTypeRec desc_type;
     desc_type.face_id = face_id;
@@ -230,7 +268,7 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
         LV_LOG_ERROR("ImageCache_Lookup error");
         return false;
     }
-    if (image_glyph->format != FT_GLYPH_FORMAT_BITMAP) {
+    if(image_glyph->format != FT_GLYPH_FORMAT_BITMAP) {
         LV_LOG_ERROR("Glyph_To_Bitmap error");
         return false;
     }
@@ -250,8 +288,16 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
 
 static const uint8_t * get_glyph_bitmap_cb_cache(const lv_font_t * font, uint32_t unicode_letter)
 {
-    LV_UNUSED(font);
     LV_UNUSED(unicode_letter);
+
+    lv_font_fmt_ft_dsc_t * dsc = (lv_font_fmt_ft_dsc_t *)(font->dsc);
+    if(dsc->style & FT_FONT_STYLE_BOLD) {
+        if(current_face && current_face->glyph->format == FT_GLYPH_FORMAT_BITMAP) {
+            return (const uint8_t *)(current_face->glyph->bitmap.buffer);
+        }
+        return NULL;
+    }
+
 #if LV_USE_FT_SBIT_CACHE
     return (const uint8_t *)sbit->buffer;
 #else
@@ -295,6 +341,15 @@ static bool lv_ft_font_init_cache(lv_ft_info_t * info)
         lv_mem_free(face_info);
         LV_LOG_ERROR("Failed to LookupSize");
         goto Fail;
+    }
+
+    if(dsc->style & FT_FONT_STYLE_ITALIC) {
+        FT_Matrix ItalicMatrix;
+        ItalicMatrix.xx = 1 << 16;
+        ItalicMatrix.xy = 0x5800;
+        ItalicMatrix.yx = 0;
+        ItalicMatrix.yy = 1 << 16;
+        FT_Set_Transform(face_size->face, &ItalicMatrix, NULL);
     }
 
     lv_font_t * font = dsc->font;
@@ -411,6 +466,22 @@ static bool get_glyph_dsc_cb_nocache(const lv_font_t * font,
     error = FT_Load_Glyph(face, glyph_index, FT_LOAD_DEFAULT);
     if(error) {
         return false;
+    }
+
+    if(face->glyph->format == FT_GLYPH_FORMAT_OUTLINE) {
+        if(dsc->style & FT_FONT_STYLE_BOLD) {
+            int strength = 1 << 6;
+            FT_Outline_Embolden(&face->glyph->outline, strength);
+        }
+
+        if(dsc->style & FT_FONT_STYLE_ITALIC) {
+            FT_Matrix ItalicMatrix;
+            ItalicMatrix.xx = 1 << 16;
+            ItalicMatrix.xy = 0x5800;
+            ItalicMatrix.yx = 0;
+            ItalicMatrix.yy = 1 << 16;
+            FT_Outline_Transform(&face->glyph->outline, &ItalicMatrix);
+        }
     }
 
     error = FT_Render_Glyph(face->glyph, FT_RENDER_MODE_NORMAL);
