@@ -240,7 +240,10 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
 
     if(dsc->style & FT_FONT_STYLE_BOLD) {
         current_face = face;
-        return get_blod_glyph(font, face, glyph_index, dsc_out);
+        if(!get_blod_glyph(font, face, glyph_index, dsc_out)) {
+            return false;
+        }
+        goto end;
     }
 
     FTC_ImageTypeRec desc_type;
@@ -282,6 +285,11 @@ static bool get_glyph_dsc_cb_cache(const lv_font_t * font,
                      glyph_bitmap->bitmap.rows;         /*Y offset of the bitmap measured from the as line*/
     dsc_out->bpp = 8;         /*Bit per pixel: 1/2/4/8*/
 #endif
+
+end:
+    if(dsc->style & FT_FONT_STYLE_ITALIC && unicode_letter_next == '\0') {
+        dsc_out->adv_w = dsc_out->box_w + dsc_out->ofs_x;
+    }
 
     return true;
 }
@@ -496,6 +504,10 @@ static bool get_glyph_dsc_cb_nocache(const lv_font_t * font,
     dsc_out->ofs_y = face->glyph->bitmap_top -
                      face->glyph->bitmap.rows;         /*Y offset of the bitmap measured from the as line*/
     dsc_out->bpp = 8;         /*Bit per pixel: 1/2/4/8*/
+
+    if(dsc->style & FT_FONT_STYLE_ITALIC && unicode_letter_next == '\0') {
+        dsc_out->adv_w = dsc_out->box_w + dsc_out->ofs_x;
+    }
 
     return true;
 }
