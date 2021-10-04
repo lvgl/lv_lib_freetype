@@ -1,4 +1,8 @@
 # FreeType integration with LVGL
+
+**This repository is merged into the lvgl repository. See https://docs.lvgl.io/master/libs/freetype.html**
+
+
 Interface to FreeType to generate font bitmaps run time
 
 ## Install FreeType
