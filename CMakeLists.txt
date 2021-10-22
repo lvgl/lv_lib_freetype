@@ -1,0 +1,7 @@
+file(GLOB_RECURSE SOURCES ./*.c)
+add_library(lv_lib_freetype STATIC ${SOURCES})
+find_package(PkgConfig REQUIRED)
+pkg_check_modules(FREETYPE2 REQUIRED freetype2)
+target_link_libraries(lv_lib_freetype ${FREETYPE2_LIBRARIES})
+target_include_directories(lv_lib_freetype ${FREETYPE2_INCLUDE_DIRS})
+target_compile_options(lv_lib_freetype ${FREETYPE2_CFLAGS_OTHER})
